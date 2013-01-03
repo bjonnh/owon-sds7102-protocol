@@ -66,7 +66,7 @@ float get_real_voltscale(uint32_t volt) {
   if (volt > ARRAY_LENGTH(_volt_table)) {
     return(_volt_table[ARRAY_LENGTH(_volt_table)]);
   } else {
-    return(_volt_table[ARRAY_LENGTH(_volt_table)]);
+    return(_volt_table[volt]);
   }
 }
 
