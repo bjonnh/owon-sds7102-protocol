@@ -40,9 +40,9 @@ typedef struct {
   uint32_t samples_count;
   uint32_t samples_file;
   uint32_t samples3;
-  uint32_t timediv;
+  float timediv;
   int32_t offsety;
-  uint32_t voltsdiv;
+  float voltsdiv;
   uint32_t attenuation;
   float time_mul;
   float frequency;
@@ -67,8 +67,8 @@ typedef struct {
   CHANNEL_st **channels;
 } HEADER_st;
 
-// Tables are from the Levi Larsen app
-float _attenuation_table[] = {1.0e0, 1.0e1, 1.0e2, 1.0e3};
+// _attenuation_table and _volt_table are from the Levi Larsen app
+float _attenuation_table[] = {1.0e0, 1.0e1, 1.0e2, 1.0e3}; // We are only sure for these
 float _volt_table[] = {
   2.0e-3, 5.0e-3, // 1 mV
   1.0e-2, 2.0e-2, 5.0e-2, // 10 mV
@@ -79,6 +79,30 @@ float _volt_table[] = {
   1.0e+3, 2.0e+3, 5.0e+3, // 1 kV
   1.0e+4                  // 10 kV
 };
+
+// Only for SDS7102 need to allow different models
+float _timescale_table[] = {
+  2.0e-9, 5.0e-9,  // 2 ns
+  1.0e-8, 2.0e-8, 5.0e-8, // 10 ns
+  1.0e-7, 2.0e-7, 5.0e-7, // 100 ns
+  1.0e-6, 2.0e-6, 5.0e-6, // 1 us
+  1.0e-5, 2.0e-5, 5.0e-5, // 10 us
+  1.0e-4, 2.0e-4, 5.0e-4, // 100 us
+  1.0e-3, 2.0e-3, 5.0e-3, // 1 ms
+  1.0e-2, 2.0e-2, 5.0e-2, // 10 ms
+  1.0e-1, 2.0e-1, 5.0e-1, // 100 ms
+  1.0e+0, 2.0e+0, 5.0e+0, // 1 s
+  1.0e+1, 2.0e+1, 5.0e+1, // 10 s
+  1.0e+2 // 100 s 
+};
+
+float get_real_timescale(uint32_t timescale) {
+  if (timescale > ARRAY_LENGTH(_timescale_table)) {
+    return(_timescale_table[ARRAY_LENGTH(_timescale_table)]);
+  } else {
+    return(_timescale_table[timescale]);
+  }
+}
 
 float get_real_attenuation(uint32_t attenuation) {
   if (attenuation > ARRAY_LENGTH(_attenuation_table)) {
@@ -132,10 +156,10 @@ void debug_channel(CHANNEL_st *chan) {
   printf("Samples (count): %d\n",(*chan).samples_count);
   printf("Samples (file): %d\n",(*chan).samples_file);
   printf("Samples (slow-scan): %d\n",(*chan).samples3);
-  printf("Time/div: %d\n",(*chan).timediv);
+  printf("Time/div: %.10f\n",(*chan).timediv);
   printf("OffsetY: %d\n",(*chan).offsety);
-  printf("Volts/div: %d\n",(*chan).voltsdiv);
-  printf("Attenuation: %d\n",(*chan).attenuation);
+  printf("Volts/div: %f\n",(*chan).voltsdiv);
+  printf("Attenuation: %u\n",(*chan).attenuation);
   printf("Time_mul: %f\n",(*chan).time_mul);
   printf("Frequency: %f\n",(*chan).frequency);
   printf("Period: %f\n",(*chan).period);
@@ -268,10 +292,10 @@ int parse_channel(DATA_st *data_s, CHANNEL_st *channel)
   channel->samples_count = read_u32(data_s);
   channel->samples_file = read_u32(data_s);
   channel->samples3 = read_u32(data_s);
-  channel->timediv = read_u32(data_s);
+  channel->timediv = get_real_timescale(read_u32(data_s));
   channel->offsety = read_32(data_s);
-  channel->voltsdiv = read_u32(data_s);
-  channel->attenuation = read_u32(data_s);
+  channel->voltsdiv = get_real_voltscale(read_u32(data_s));
+  channel->attenuation = get_real_attenuation(read_u32(data_s));
   channel->time_mul = read_f(data_s);
   channel->frequency = read_f(data_s);
   channel->period = read_f(data_s);
