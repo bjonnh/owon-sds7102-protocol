@@ -33,28 +33,22 @@
 #define OWON_USB_ENDPOINT_OUT 0x03
 
 // Transfer timout in milliseconds
-#define OWON_USB_TRANSFER_TIMEOUT 2000    
+#define OWON_USB_TRANSFER_TIMEOUT 1000
 
-// Command to initiate download
-#define OWON_START_CMD "START" 
-
-// Length of command, in bytes
-#define OWON_START_CMD_LEN 5       
-
-// Length of the response, in bytes
-#define OWON_START_RESPONSE_LEN 12 
-
-struct owon_start_response {
-    unsigned int length;
-    unsigned int unknown;
-    unsigned int bitmap; // 0 for waveform, 1 for bitmap
+enum owon_start_command_type {
+	DUMP_BMP = 0,
+	DUMP_BIN,
+	DUMP_MEMDEPTH,
+	DUMP_DEBUGTXT,
+	DUMP_COUNT
 };
 
 void owon_usb_init(void);
-struct usb_device *owon_usb_get_device(void);
-//TODO: struct usb_device **owon_usb_get_devices(void);
+struct usb_device *owon_usb_get_device(int dnum);
+size_t owon_usb_get_device_count();
+struct usb_dev_handle *owon_usb_easy_open(int dnum);
 struct usb_dev_handle *owon_usb_open(struct usb_device *dev);
-int owon_usb_read(struct usb_dev_handle *dev_handle, char **buffer);
+int owon_usb_read(struct usb_dev_handle *dev_handle, char **buffer, enum owon_start_command_type type);
 void owon_usb_close(struct usb_dev_handle *dev_handle);
 
 #endif // __OWON__USB_H__
