@@ -275,16 +275,18 @@ int parse_channel(DATA_st *data_s, CHANNEL_st *channel)
   channel->period = read_f(data_s);
   channel->volts_mul = read_f(data_s);
 
-  channel->data = (double *) calloc(channel->samples_file,sizeof(double));
+  channel->data = (double *) calloc(channel->samples_file+1,sizeof(double));
   if (channel->data == NULL) {
     printf("Error: Can't allocate %d bytes of memory.\n",channel->samples_file*sizeof(int16_t));
     return 2;
   }
+  for (i=0;i<channel->samples_file-1;i++) {
 
-  if (channel->datatype == 2) {
-    memcpy(&(channel->data),data_s,channel->samples_file*sizeof(int16_t));
-  } else {
-    memcpy(&(channel->data),data_s,channel->samples_file*sizeof(char));
+    if (channel->datatype == 2) {
+      channel->data[i] = read_16(data_s);
+    } else {
+      channel->data[i] = read_char(data_s);
+    }
   }
 
   debug_channel(channel);
@@ -298,7 +300,6 @@ int parse(DATA_st *data_s, HEADER_st *header)
  
   if (strncmp((data_s->data_p)+12,"SPB",3) == 0) {
     header->length = read_32(data_s); // This is the length without the LAN header
-    printf("Length: %d\n",header->length);
     header->unknown1 = read_32(data_s);
     header->type = read_32(data_s); // This seems to be related to the number of parts in the file
   }
@@ -327,12 +328,15 @@ int parse(DATA_st *data_s, HEADER_st *header)
     if (strncmp(data_s->data_p,"CH",2) == 0) {
 
       header->channels_count++;
-      header->channels = realloc(header->channels,sizeof(void *) * header->channels_count);
-      header->channels[header->channels_count] = malloc(sizeof(CHANNEL_st));
+
+      header->channels = realloc(header->channels,header->channels_count);
+
       if (header->channels==NULL) {
 	printf("Can't allocate %d bytes of memory for channel data.\n",sizeof(CHANNEL_st) * header->channels_count);
 	return(126);
       }
+      header->channels[header->channels_count] = malloc(sizeof(CHANNEL_st));
+      memset(header->channels[header->channels_count],0,sizeof(CHANNEL_st)); // Putting NULL in the structure for fields not present
       parse_channel(data_s,header->channels[header->channels_count]);
     } else if (strncmp(data_s->data_p,"INFO",4) == 0) {
       
@@ -345,6 +349,8 @@ int parse(DATA_st *data_s, HEADER_st *header)
 int main(int argc, char **argv) {
   FILE *fp;
   int fd;
+
+  int i;
 
   DATA_st data;
   HEADER_st file_header;
@@ -388,6 +394,13 @@ int main(int argc, char **argv) {
   data.len = stbuf.st_size;
 
   parse(&data,&file_header);
+  
+  free((char *)data.data);
+
+  for (i=1;i<=file_header.channels_count;i++) {
+    free(file_header.channels[i]->data);
+    free(file_header.channels[i]);
+  }
   return(0);
 }
 
