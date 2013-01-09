@@ -330,14 +330,12 @@ int parse(DATA_st *data_s, HEADER_st *header)
 
       header->channels_count++;
 
-      channel_p = realloc(header->channels,header->channels_count);
+      channel_p = realloc(header->channels,header->channels_count*sizeof(CHANNEL_st*));
       if (channel_p==NULL) {
-	printf("Can't allocate %d bytes of memory for channel data.\n",sizeof(CHANNEL_st) * header->channels_count);
+	printf("Can't allocate %d bytes of memory for channel data.\n",sizeof(CHANNEL_st*) * header->channels_count);
 	return(126);
       }
-      if (channel_p != header->channels) {
-	free(header->channels);
-      }
+
       header->channels = channel_p;
       header->channels[header->channels_count-1] = malloc(sizeof(CHANNEL_st));
       memset(header->channels[header->channels_count-1],0,sizeof(CHANNEL_st)); // Putting NULL in the structure for fields not present
@@ -405,6 +403,7 @@ int main(int argc, char **argv) {
     free(file_header.channels[i]->data);
     free(file_header.channels[i]);
   }
+  free(file_header.channels);
   return(0);
 }
 
