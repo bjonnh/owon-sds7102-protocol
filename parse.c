@@ -60,7 +60,7 @@ typedef struct {
   char serial[30];
   unsigned char triggerstatus;
   unsigned char unknownstatus;
-  float unknownvalue1;
+  uint32_t unknownvalue1;
   unsigned char unknownvalue2;
   unsigned char unknown3[8];
   size_t channels_count;
@@ -164,7 +164,7 @@ void debug_file(HEADER_st *file_header) {
 #ifdef DEBUG_UNKNOWN
   printf("TRIGGERSTATUS: %d\n",file_header->triggerstatus);
   printf("UNKNOWNSTATUS: %d\n",file_header->unknownstatus);
-  printf("UnknownValue1: %f\n",file_header->unknownvalue1);
+  printf("UnknownValue1: %u\n",file_header->unknownvalue1);
   printf("UnknownValue2: %c ",file_header->unknownvalue2);
   switch(file_header->unknownvalue2) {
   case 'M':
@@ -223,7 +223,9 @@ uint16_t read_16(DATA_st *data) {
 
 float read_f(DATA_st *data) {
   float temp;
-  temp = (float)(*data->data_p);
+
+  memcpy(&temp,&(*data->data_p),4);
+
   data->data_p += sizeof(float);
   return temp;
 }
@@ -274,8 +276,7 @@ int parse_channel(DATA_st *data_s, CHANNEL_st *channel)
   channel->frequency = read_f(data_s);
   channel->period = read_f(data_s);
   channel->volts_mul = read_f(data_s);
-
-  channel->data = (double *) calloc(channel->samples_file+1,sizeof(double));
+  channel->data = (double *) calloc(channel->samples_file,sizeof(double));
   if (channel->data == NULL) {
     printf("Error: Can't allocate %d bytes of memory.\n",channel->samples_file*sizeof(int16_t));
     return 2;
@@ -315,7 +316,7 @@ int parse(DATA_st *data_s, HEADER_st *header)
     header->triggerstatus = read_char(data_s);
     
     header->unknownstatus = read_char(data_s);
-    header->unknownvalue1 = read_f(data_s);
+    header->unknownvalue1 = read_u32(data_s);
     header->unknownvalue2 = read_char(data_s);
     read_string(data_s,header->unknown3,sizeof(header->unknown3));
     
