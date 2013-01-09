@@ -295,6 +295,7 @@ int parse_channel(DATA_st *data_s, CHANNEL_st *channel)
 int parse(DATA_st *data_s, HEADER_st *header)
 {
   unsigned int i;
+  CHANNEL_st **channel_p;
 
   memset(header,0,sizeof(HEADER_st)); // Putting NULL in the structure for fields not present
  
@@ -329,15 +330,18 @@ int parse(DATA_st *data_s, HEADER_st *header)
 
       header->channels_count++;
 
-      header->channels = realloc(header->channels,header->channels_count);
-
-      if (header->channels==NULL) {
+      channel_p = realloc(header->channels,header->channels_count);
+      if (channel_p==NULL) {
 	printf("Can't allocate %d bytes of memory for channel data.\n",sizeof(CHANNEL_st) * header->channels_count);
 	return(126);
       }
-      header->channels[header->channels_count] = malloc(sizeof(CHANNEL_st));
-      memset(header->channels[header->channels_count],0,sizeof(CHANNEL_st)); // Putting NULL in the structure for fields not present
-      parse_channel(data_s,header->channels[header->channels_count]);
+      if (channel_p != header->channels) {
+	free(header->channels);
+      }
+      header->channels = channel_p;
+      header->channels[header->channels_count-1] = malloc(sizeof(CHANNEL_st));
+      memset(header->channels[header->channels_count-1],0,sizeof(CHANNEL_st)); // Putting NULL in the structure for fields not present
+      parse_channel(data_s,header->channels[header->channels_count-1]);
     } else if (strncmp(data_s->data_p,"INFO",4) == 0) {
       
     }
@@ -397,7 +401,7 @@ int main(int argc, char **argv) {
   
   free((char *)data.data);
 
-  for (i=1;i<=file_header.channels_count;i++) {
+  for (i=0;i<file_header.channels_count;i++) {
     free(file_header.channels[i]->data);
     free(file_header.channels[i]);
   }
