@@ -27,6 +27,12 @@
 #define ARRAY_LENGTH(x) (sizeof(x)/sizeof(*(x)))
 
 typedef struct {
+  const unsigned char *data;
+  const unsigned char *data_p;
+  size_t len;
+} DATA_st;
+
+typedef struct {
   unsigned char name[4];
   int32_t unknownint;
   int32_t datatype;
@@ -181,93 +187,93 @@ void debug_file(HEADER_st *file_header) {
 
 // Reading an unsigned 32 and increment the data_p position accordingly
 
-uint32_t read_u32(const unsigned char **data_p) {
+uint32_t read_u32(DATA_st *data) {
   uint32_t temp;
-  temp = (uint32_t)(*data_p)[3] << 24 |
-    (uint32_t)(*data_p)[2] << 16 |
-    (uint32_t)(*data_p)[1] << 8  |
-    (uint32_t)(*data_p)[0];
-  *data_p += sizeof(uint32_t);
+  temp = (uint32_t)(data->data_p[3]) << 24 |
+    (uint32_t)(data->data_p[2]) << 16 |
+    (uint32_t)(data->data_p[1]) << 8  |
+    (uint32_t)(data->data_p[0]);
+  data->data_p += sizeof(uint32_t);
   return temp;
 }
 
 // Reading a signed 32 and increment the data_p position accordingly
 
-int32_t read_32(const unsigned char **data_p) {
+int32_t read_32(DATA_st *data) {
   int32_t temp;
-  temp = (int32_t)(*data_p)[3] << 24 |
-    (int32_t)(*data_p)[2] << 16 |
-    (int32_t)(*data_p)[1] << 8  |
-    (int32_t)(*data_p)[0];
-  *data_p += sizeof(int32_t);
+  temp = (int32_t)(data->data_p[3]) << 24 |
+    (int32_t)(data->data_p[2]) << 16 |
+    (int32_t)(data->data_p[1]) << 8  |
+    (int32_t)(data->data_p[0]);
+  data->data_p += sizeof(int32_t);
   return temp;
 }
 
 // Reading a signed 16 and increment the data_p position accordingly
 
-uint16_t read_16(const unsigned char **data_p) {
+uint16_t read_16(DATA_st *data) {
   uint16_t temp;
-  temp = (uint16_t)(*data_p)[1] << 8  |
-    (uint16_t)(*data_p)[0];
-  *data_p += sizeof(uint16_t);
+  temp = (uint16_t)(data->data_p[1]) << 8  |
+    (uint16_t)(data->data_p[0]);
+  data->data_p += sizeof(uint16_t);
   return temp;
 }
 
 // Reading a float and increment the data_p position accordingly
 
-float read_f(const unsigned char **data_p) {
+float read_f(DATA_st *data) {
   float temp;
-  temp = (float)(**data_p);
-  *data_p += sizeof(float);
+  temp = (float)(*data->data_p);
+  data->data_p += sizeof(float);
   return temp;
 }
 
 // Reading a char and increment the data_p position accordingly
 
-unsigned char read_char(const unsigned char **data_p) {
+unsigned char read_char(DATA_st *data) {
   unsigned char temp;
-  temp = (unsigned char)(**data_p);
-  *data_p += sizeof(unsigned char);
+  temp = (unsigned char)(*data->data_p);
+  data->data_p += sizeof(unsigned char);
   return temp;
 }
 
 // Reading a string from *data_p of length len-1, and copying in the memory area at destination.
 // add a \0 at the end of destination and increment data_p position
-void read_string_nullify(const unsigned char **data_p, char *destination, size_t len) {
-  memcpy(destination,*data_p,len-1);
+void read_string_nullify(DATA_st *data, char *destination, size_t len) {
+  memcpy(destination,data->data_p,len-1);
   destination[len]=0;
-  *data_p += len-1;
+  data->data_p += len-1;
 }
 
 // Reading a string from *data_p of length len, and copying in the memory area at destination.
 // then increment data_p position
 
-void read_string(const unsigned char **data_p, char *destination, size_t len) {
-  memcpy(destination,*data_p,len);
-  *data_p += len;
+void read_string(DATA_st *data, char *destination, size_t len) {
+  memcpy(destination,data->data_p,len);
+  data->data_p += len;
 }
 
 // Parse a channel from data, len will be used to check if there is enough data
 
-int parse_channel(const unsigned char **data, size_t len, CHANNEL_st *channel) 
+int parse_channel(DATA_st *data_s, CHANNEL_st *channel) 
 {
   size_t i;
 
-  read_string_nullify(data,channel->name,4);
-  channel->unknownint = read_32(data);
-  channel->datatype = read_32(data);
-  read_string(data,channel->unknown4,4);
-  channel->samples_count = read_u32(data);
-  channel->samples_file = read_u32(data);
-  channel->samples3 = read_u32(data);
-  channel->timediv = read_u32(data);
-  channel->offsety = read_32(data);
-  channel->voltsdiv = read_u32(data);
-  channel->attenuation = read_u32(data);
-  channel->time_mul = read_f(data);
-  channel->frequency = read_f(data);
-  channel->period = read_f(data);
-  channel->volts_mul = read_f(data);
+  read_string_nullify(data_s,channel->name,4);
+  channel->unknownint = read_32(data_s);
+  channel->datatype = read_32(data_s);
+  read_string(data_s,channel->unknown4,4);
+  channel->samples_count = read_u32(data_s);
+  channel->samples_file = read_u32(data_s);
+  channel->samples3 = read_u32(data_s);
+  channel->timediv = read_u32(data_s);
+  channel->offsety = read_32(data_s);
+  channel->voltsdiv = read_u32(data_s);
+  channel->attenuation = read_u32(data_s);
+  channel->time_mul = read_f(data_s);
+  channel->frequency = read_f(data_s);
+  channel->period = read_f(data_s);
+  channel->volts_mul = read_f(data_s);
 
   channel->data = (double *) calloc(channel->samples_file,sizeof(double));
   if (channel->data == NULL) {
@@ -276,73 +282,73 @@ int parse_channel(const unsigned char **data, size_t len, CHANNEL_st *channel)
   }
 
   if (channel->datatype == 2) {
-    memcpy(&(channel->data),data,channel->samples_file*sizeof(int16_t));
+    memcpy(&(channel->data),data_s,channel->samples_file*sizeof(int16_t));
   } else {
-    memcpy(&(channel->data),data,channel->samples_file*sizeof(char));
+    memcpy(&(channel->data),data_s,channel->samples_file*sizeof(char));
   }
 
   debug_channel(channel);
 }
 
-int parse(const char *data, size_t len, HEADER_st *header)
+int parse(DATA_st *data_s, HEADER_st *header)
 {
-unsigned int i;
-const unsigned char *data_p;
+  unsigned int i;
 
-memset(header,0,sizeof(HEADER_st)); // Putting NULL in the structure for fields not present
+  memset(header,0,sizeof(HEADER_st)); // Putting NULL in the structure for fields not present
  
-data_p = data;
-
-if (strncmp(data+12,"SPB",3) == 0) {
-header->length = read_32(&data_p); // This is the length without the LAN header
-printf("Length: %d\n",header->length);
-header->unknown1 = read_32(&data_p);
-header->type = read_32(&data_p); // This seems to be related to the number of parts in the file
-}
-
-read_string_nullify(&data_p,header->model,sizeof(header->model));
-
-header->intsize=read_32(&data_p); // Not really the size ? It was in some models.
-
-if (header->intsize != 0xFFFFFF) { // For short files coming from official app
-read_string_nullify(&data_p,header->serial,sizeof(header->serial));
-
-header->triggerstatus = read_char(&data_p);
-
-header->unknownstatus = read_char(&data_p);
-header->unknownvalue1 = read_f(&data_p);
-header->unknownvalue2 = read_char(&data_p);
-read_string(&data_p,header->unknown3,sizeof(header->unknown3));
-
-debug_file(header);    
-
-}
-
-header->channels_count = 0;
-  
-while ((void *)data_p < (void *)data + len) {
-if (strncmp(data_p,"CH",2) == 0) {
-  header->channels_count++;
-  header->channels = realloc(header->channels,sizeof(void *) * header->channels_count);
-  header->channels[header->channels_count] = malloc(sizeof(CHANNEL_st));
-  if (header->channels==NULL) {
-    printf("Can't allocate %d bytes of memory for channel data.\n",sizeof(CHANNEL_st) * header->channels_count);
-    return(126);
+  if (strncmp((data_s->data_p)+12,"SPB",3) == 0) {
+    header->length = read_32(data_s); // This is the length without the LAN header
+    printf("Length: %d\n",header->length);
+    header->unknown1 = read_32(data_s);
+    header->type = read_32(data_s); // This seems to be related to the number of parts in the file
   }
-  parse_channel(&data_p,len,header->channels[header->channels_count]);
- } else if (strncmp(data_p,"INFO",4) == 0) {
 
- }
- data_p++;
- }
- return(0);
+  read_string_nullify(data_s,header->model,sizeof(header->model));
+
+  header->intsize=read_32(data_s); // Not really the size ? It was in some models.
+  
+  if (header->intsize != 0xFFFFFF) { // For short files coming from official app
+    read_string_nullify(data_s,header->serial,sizeof(header->serial));
+
+    header->triggerstatus = read_char(data_s);
+    
+    header->unknownstatus = read_char(data_s);
+    header->unknownvalue1 = read_f(data_s);
+    header->unknownvalue2 = read_char(data_s);
+    read_string(data_s,header->unknown3,sizeof(header->unknown3));
+    
+    debug_file(header);    
+
+  }
+  
+  header->channels_count = 0;
+
+  while ((void *)data_s->data_p < (void *) data_s->data + data_s->len) {
+    if (strncmp(data_s->data_p,"CH",2) == 0) {
+
+      header->channels_count++;
+      header->channels = realloc(header->channels,sizeof(void *) * header->channels_count);
+      header->channels[header->channels_count] = malloc(sizeof(CHANNEL_st));
+      if (header->channels==NULL) {
+	printf("Can't allocate %d bytes of memory for channel data.\n",sizeof(CHANNEL_st) * header->channels_count);
+	return(126);
+      }
+      parse_channel(data_s,header->channels[header->channels_count]);
+    } else if (strncmp(data_s->data_p,"INFO",4) == 0) {
+      
+    }
+    data_s->data_p++;
+  }
+  return(0);
 }
 
 int main(int argc, char **argv) {
   FILE *fp;
   int fd;
 
+  DATA_st data;
   HEADER_st file_header;
+
   struct stat stbuf;
 
   char *buffer;
@@ -368,18 +374,20 @@ int main(int argc, char **argv) {
     return(127);
   }
 
-  buffer = calloc(stbuf.st_size,sizeof(char));
-  if (buffer==NULL) {
+  data.data = calloc(stbuf.st_size,sizeof(char));
+  if (data.data==NULL) {
     printf("Can't allocate %d bytes of memory.\n",stbuf.st_size);
     return(126);
   }
   
-  if (fread(buffer,sizeof(char),stbuf.st_size,fp) != stbuf.st_size) {
+  if (fread((void *)data.data,sizeof(char),stbuf.st_size,fp) != stbuf.st_size) {
     printf("Error: can't read file %s\n",argv[1]);
     return(125);
   }
+  data.data_p = data.data;
+  data.len = stbuf.st_size;
 
-  parse(buffer,stbuf.st_size,&file_header);
+  parse(&data,&file_header);
   return(0);
 }
 
