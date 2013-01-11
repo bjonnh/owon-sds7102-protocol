@@ -77,7 +77,7 @@ float _volt_table[] = {
   1.0e+1, 2.0e+1, 5.0e+1, // 10 V
   1.0e+2, 2.0e+2, 5.0e+2, // 100 V
   1.0e+3, 2.0e+3, 5.0e+3, // 1 kV
-  1.0e+4                  // 10 kV
+  1.0e+4		  // 10 kV
 };
 
 // Only for SDS7102 need to allow different models
@@ -344,7 +344,7 @@ int parse(DATA_st *data_s, HEADER_st *header)
     header->unknownvalue2 = read_char(data_s);
     read_string(data_s,header->unknown3,sizeof(header->unknown3));
     
-    debug_file(header);    
+    debug_file(header);	   
 
   }
   
