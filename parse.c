@@ -16,56 +16,16 @@
 * along with this program. If not, see <http://www.gnu.org/licenses/>
 */
 
-
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include "parse.h"
 
 #define ARRAY_LENGTH(x) (sizeof(x)/sizeof(*(x)))
 
-typedef struct {
-  const unsigned char *data;
-  const unsigned char *data_p;
-  size_t len;
-} DATA_st;
-
-typedef struct {
-  unsigned char name[4];
-  int32_t unknownint;
-  int32_t datatype;
-  unsigned char unknown4[4];
-  uint32_t samples_count;
-  uint32_t samples_file;
-  uint32_t samples3;
-  float timediv;
-  int32_t offsety;
-  float voltsdiv;
-  uint32_t attenuation;
-  float time_mul;
-  float frequency;
-  float period;
-  float volts_mul;
-  double *data;
-} CHANNEL_st;
-
-typedef struct {
-  uint32_t length;
-  int32_t unknown1;
-  int32_t type;
-  char model[7];
-  int32_t intsize;
-  char serial[30];
-  unsigned char triggerstatus;
-  unsigned char unknownstatus;
-  uint32_t unknownvalue1;
-  unsigned char unknownvalue2;
-  unsigned char unknown3[8];
-  size_t channels_count;
-  CHANNEL_st **channels;
-} HEADER_st;
 
 // _attenuation_table and _volt_table are from the Levi Larsen app
 float _attenuation_table[] = {1.0e0, 1.0e1, 1.0e2, 1.0e3}; // We are only sure for these
@@ -317,10 +277,15 @@ int parse_channel(DATA_st *data_s, CHANNEL_st *channel)
   debug_channel(channel);
 }
 
-int parse(DATA_st *data_s, HEADER_st *header)
+int owon_parse(const char *buf, size_t len, HEADER_st *header)
 {
   unsigned int i;
+  DATA_st data, *data_s = &data;
   CHANNEL_st **channel_p;
+
+  data_s->data = buf;
+  data_s->data_p = buf;
+  data_s->len = len;
 
   memset(header,0,sizeof(HEADER_st)); // Putting NULL in the structure for fields not present
  
@@ -344,7 +309,7 @@ int parse(DATA_st *data_s, HEADER_st *header)
     header->unknownvalue2 = read_char(data_s);
     read_string(data_s,header->unknown3,sizeof(header->unknown3));
     
-    debug_file(header);	   
+    debug_file(header);
 
   }
   
@@ -373,62 +338,37 @@ int parse(DATA_st *data_s, HEADER_st *header)
   return(0);
 }
 
-int main(int argc, char **argv) {
-  FILE *fp;
-  int fd;
+void owon_output_csv(HEADER_st *header, FILE *file)
+{
+	unsigned int i, samples_count;
+	float time = 0;
+	
+	if (header->channels_count < 1)
+		return;
+	
+	/* header */
+	fprintf(file, "time");
+	for (i = 0; i < header->channels_count; i++)
+		fprintf(file, ",channel %i", i + 1);
+	fprintf(file, "\n");
 
-  int i;
-
-  DATA_st data;
-  HEADER_st file_header;
-
-  struct stat stbuf;
-
-  char *buffer;
-  
-  if (argc<2) {
-    printf("Give me the food !\n");
-    return 1;
-  }
-
-  fd=open(argv[1],O_RDONLY);
-  if (fd==-1) {
-    printf("Error: can't open file %s\n",argv[1]);
-    return(128);
-  }
-  fp=fdopen(fd,"rb");
-  if (fp==NULL) {
-    printf("Error: can't open file %s\n",argv[1]);
-    return(128);
-  }
-
-  if (fstat(fd, &stbuf) == -1) {
-    printf("Error: %s may not be a regular file\n",argv[1]);
-    return(127);
-  }
-
-  data.data = calloc(stbuf.st_size,sizeof(char));
-  if (data.data==NULL) {
-    printf("Can't allocate %d bytes of memory.\n",stbuf.st_size);
-    return(126);
-  }
-  
-  if (fread((void *)data.data,sizeof(char),stbuf.st_size,fp) != stbuf.st_size) {
-    printf("Error: can't read file %s\n",argv[1]);
-    return(125);
-  }
-  data.data_p = data.data;
-  data.len = stbuf.st_size;
-
-  parse(&data,&file_header);
-  
-  free((char *)data.data);
-
-  for (i=0;i<file_header.channels_count;i++) {
-    free(file_header.channels[i]->data);
-    free(file_header.channels[i]);
-  }
-  free(file_header.channels);
-  return(0);
+	/* values: to be tweaked */
+	samples_count = header->channels[0]->samples_count;
+	for (i = 0; i < samples_count; i++) {
+		time = (float)i * (header->channels[0]->timediv * 10) / samples_count;
+		fprintf(file, "%f,%f", time, header->channels[0]->data[i]);
+		if (header->channels_count == 2)
+			fprintf(file, ",%f", header->channels[1]->data[i]);
+		fprintf(file, "\n");
+	}
 }
 
+void owon_free_header(HEADER_st *header)
+{
+	int i;
+	for (i = 0; i < header->channels_count; i++) {
+		free(header->channels[i]->data);
+		free(header->channels[i]);
+	}
+	free(header->channels);
+}
