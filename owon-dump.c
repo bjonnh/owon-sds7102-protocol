@@ -14,7 +14,7 @@ struct owon_dump_params {
 
 void usage(int argc, char **argv)
 {
-	printf("usage: %s [-d device_number] [-m (bmp|bin|memdepth|debugtxt)] [-f output_file]");
+  printf("usage: %s [-d device_number] [-m (bmp|bin|memdepth|debugtxt)] [-f output_file]",argv[0]);
 	exit(EXIT_FAILURE);
 }
 
