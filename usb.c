@@ -96,6 +96,7 @@ struct usb_dev_handle *owon_usb_open(struct usb_device *dev) {
 	if (0 > ret) {
 		return NULL;
 	}
+	usb_reset(dev_handle);
 	return dev_handle;
 }
 

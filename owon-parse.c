@@ -16,7 +16,6 @@
 * along with this program. If not, see <http://www.gnu.org/licenses/>
 */
 
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -60,10 +59,12 @@ int main(int argc, char **argv) {
 
   data.data = calloc(stbuf.st_size,sizeof(char));
   if (data.data==NULL) {
+
     printf("Can't allocate %d bytes of memory.\n",stbuf.st_size);
     return(126);
   }
   
+
   if (fread((void *)data.data,sizeof(char),stbuf.st_size,fp) != stbuf.st_size) {
     printf("Error: can't read file %s\n",argv[1]);
     return(125);

@@ -5,16 +5,18 @@
 #include <string.h>
 #include <usb.h>
 #include "usb.h"
+#include "parse.h"
 
 struct owon_dump_params {
 	uint8_t dnum;
 	enum owon_start_command_type mode;
+	enum owon_output_type output;
 	char *filename;
 };
 
 void usage(int argc, char **argv)
 {
-  printf("usage: %s [-d device_number] [-m (bmp|bin|memdepth|debugtxt)] [-f output_file]",argv[0]);
+	printf("usage: %s [-d device_number] [-m (bmp|bin|memdepth|debugtxt)] [-p (raw|csv)] [-f output_file]", argv[0]);
 	exit(EXIT_FAILURE);
 }
 
@@ -40,9 +42,10 @@ int parse_cli(int argc, char **argv, struct owon_dump_params *params)
 
 	params->dnum = 0;
 	params->mode = DUMP_BIN;
+	params->output = DUMP_OUTPUT_RAW;
 	params->filename = NULL;
 
-	while ((c = getopt (argc, argv, "d:m:f:l")) != -1) {
+	while ((c = getopt (argc, argv, "d:m:o:f:l")) != -1) {
 		switch (c) {
 			case 'd':
 				sscanf(optarg, "%d", &params->dnum);
@@ -59,6 +62,14 @@ int parse_cli(int argc, char **argv, struct owon_dump_params *params)
 				else
 					return 1;
 				break;
+			case 'o':
+				if (strcasecmp(optarg, "raw") == 0)
+					params->output = DUMP_OUTPUT_RAW;
+				else if (strcasecmp(optarg, "csv") == 0)
+					params->output = DUMP_OUTPUT_CSV;
+				else
+					return 1;
+				break;
 			case 'f':
 				params->filename = strdup(optarg);
 				break;
@@ -72,6 +83,23 @@ int parse_cli(int argc, char **argv, struct owon_dump_params *params)
 	}
 	
 	return 0;
+}
+
+int output_raw(FILE *fp, char *buffer, long length)
+{
+	// Write data out
+	fwrite(buffer, sizeof(char), length, fp);
+}
+
+int output_csv(FILE *fp, char *buffer, long length)
+{
+	HEADER_st header;
+
+	int ret = owon_parse(buffer, length, &header);
+	if (ret < 0)
+		return ret;
+
+	owon_output_csv(&header, fp);
 }
 
 int main (int argc, char **argv)
@@ -106,8 +134,15 @@ int main (int argc, char **argv)
 		}
 	}
 
-	// Write data out
-	fwrite(buffer, sizeof(char), length, fp);
+	switch (params.output) {
+	case DUMP_OUTPUT_RAW:
+		output_raw(fp, buffer, length);
+		break;
+	case DUMP_OUTPUT_CSV:
+		output_csv(fp, buffer, length);
+		break;
+	}
+	
 	free(buffer);
 
 	// Only close fp if it's an actually file (don't close stdout).

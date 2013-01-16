@@ -16,7 +16,6 @@
 * along with this program. If not, see <http://www.gnu.org/licenses/>
 */
 
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -277,10 +276,16 @@ int parse_channel(DATA_st *data_s, CHANNEL_st *channel)
   debug_channel(channel);
 }
 
+
 int owon_parse(DATA_st *data_s, HEADER_st *header)
 {
   unsigned int i;
+  DATA_st data, *data_s = &data;
   CHANNEL_st **channel_p;
+
+  data_s->data = buf;
+  data_s->data_p = buf;
+  data_s->len = len;
 
   memset(header,0,sizeof(HEADER_st)); // Putting NULL in the structure for fields not present
  

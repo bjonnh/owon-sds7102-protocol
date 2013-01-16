@@ -43,6 +43,12 @@ enum owon_start_command_type {
 	DUMP_COUNT
 };
 
+enum owon_output_type {
+	DUMP_OUTPUT_RAW = 0,
+	DUMP_OUTPUT_CSV,
+	DUMP_OUTPUT_COUNT
+};
+
 void owon_usb_init(void);
 struct usb_device *owon_usb_get_device(int dnum);
 size_t owon_usb_get_device_count();
