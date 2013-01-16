@@ -29,7 +29,6 @@ int main(int argc, char **argv) {
 
   int i;
 
-  DATA_st data;
   HEADER_st file_header;
 
   struct stat stbuf;
@@ -57,28 +56,27 @@ int main(int argc, char **argv) {
     return(127);
   }
 
-  data.data = calloc(stbuf.st_size,sizeof(char));
-  if (data.data==NULL) {
+  buffer = calloc(stbuf.st_size,sizeof(char));
+  if (buffer==NULL) {
 
     printf("Can't allocate %d bytes of memory.\n",stbuf.st_size);
     return(126);
   }
   
 
-  if (fread((void *)data.data,sizeof(char),stbuf.st_size,fp) != stbuf.st_size) {
+  if (fread((void *)buffer,sizeof(char),stbuf.st_size,fp) != stbuf.st_size) {
     printf("Error: can't read file %s\n",argv[1]);
     return(125);
   }
-  data.data_p = data.data;
-  data.len = stbuf.st_size;
 
-  owon_parse(&data,&file_header);
+
+  owon_parse(buffer,stbuf.st_size,&file_header);
 
   fp2=fopen("output.csv","w+");
   
   owon_output_csv(&file_header,fp2);
   fclose(fp2);
-  free((char *)data.data);
+  free((char *)buffer);
   owon_free_header(&file_header);
   return(0);
 }

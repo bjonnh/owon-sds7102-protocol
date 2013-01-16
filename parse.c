@@ -277,12 +277,13 @@ int parse_channel(DATA_st *data_s, CHANNEL_st *channel)
 }
 
 
-int owon_parse(DATA_st *data_s, HEADER_st *header)
+int owon_parse(char *buf,size_t len, HEADER_st *header)
 {
   unsigned int i;
-  DATA_st data, *data_s = &data;
+  DATA_st data;
+  DATA_st *data_s = &data;
   CHANNEL_st **channel_p;
-
+  
   data_s->data = buf;
   data_s->data_p = buf;
   data_s->len = len;
