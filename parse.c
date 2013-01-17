@@ -348,37 +348,18 @@ static float sample_id_to_time(const HEADER_st *header, uint32_t sample)
 
 static float sample_to_volt(HEADER_st *header, uint8_t channel, uint32_t sample)
 {
-	uint8_t val, prev, next;;
+	int8_t val;
 
-	if (!header->channels_count)
+	if (channel > header->channels_count - 1)
 		return -1.0;
 
 	val = header->channels[channel]->data[sample];
-	if (val == 0xff) {
-		prev = next = 0xff;
-		if (sample > 1)
-			prev = header->channels[channel]->data[sample - 1];
-		if (sample < header->channels[channel]->samples_count - 1)
-			next = header->channels[channel]->data[sample + 1];
-
-		if (prev != 0xff && next != 0xff)
-			val = ((uint16_t)next + (uint16_t)prev) / 2;
-		else if (prev != 0xff)
-			val = prev;
-		else if (next != 0xff)
-			val = next;
-		else
-			val = 0;
-		header->channels[channel]->data[sample] = val;
-		fprintf(stderr, "Replaced sample 0x%x (was 0xff, now is 0x%x  as prev = 0x%x and next = 0x%x)\n",
-			sample, val, prev, next);
-	}
-	
-
-	return val * 2 / 5 * header->channels[channel]->voltsdiv;
+	return val * 2.0 * header->channels[channel]->voltsdiv / 5.0;
 }
 
 int owon_output_csv(HEADER_st *header, FILE *file ) {
+	size_t sample, channel, channels_count, samples_count;
+
 	channels_count = header->channels_count;
 	if (channels_count < 1)
 		return 1;
