@@ -121,6 +121,7 @@ struct usb_dev_handle *owon_usb_easy_open(int dnum) {
 int owon_usb_read(struct usb_dev_handle *dev_handle, char **buffer,
 		  enum owon_start_command_type type) {
 	struct owon_start_command *cmd;
+	uint32_t downloaded = 0;
 	
 	if (type >= DUMP_COUNT)
 		return -1;
@@ -156,17 +157,17 @@ int owon_usb_read(struct usb_dev_handle *dev_handle, char **buffer,
 		return OWON_ERROR_MEMORY;
 	}
 
-	// Read the data from the ocilloscope.
-	ret = usb_bulk_read(dev_handle, 
-		OWON_USB_ENDPOINT_IN, 
-		*buffer, 
-		start_response.length, 
-		OWON_USB_TRANSFER_TIMEOUT);
-	if (start_response.length != ret) {
-		return OWON_ERROR_USB;
-	}
+	// Read data from the ocilloscope.
+	downloaded = 0;
+	do {
+		ret = usb_bulk_read(dev_handle, OWON_USB_ENDPOINT_IN, *buffer + downloaded,
+				    0xffff, OWON_USB_TRANSFER_TIMEOUT);
 
-	return start_response.length; 
+		if (ret > 0)
+			downloaded += ret;
+	} while (ret > 0);
+
+	return downloaded; 
 }
 
 void owon_usb_close(struct usb_dev_handle *dev_handle) {
