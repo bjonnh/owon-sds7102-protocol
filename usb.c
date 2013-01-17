@@ -16,9 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#include "stdio.h"
+#include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <errno.h>
 
 #include <usb.h>
 #include "usb.h"
@@ -121,7 +122,7 @@ struct usb_dev_handle *owon_usb_easy_open(int dnum) {
 int owon_usb_read(struct usb_dev_handle *dev_handle, char **buffer,
 		  enum owon_start_command_type type) {
 	struct owon_start_command *cmd;
-	uint32_t downloaded = 0;
+	uint32_t allocated = 0, downloaded = 0;
 	
 	if (type >= DUMP_COUNT)
 		return -1;
@@ -156,10 +157,18 @@ int owon_usb_read(struct usb_dev_handle *dev_handle, char **buffer,
 	if (NULL == *buffer) {
 		return OWON_ERROR_MEMORY;
 	}
+	allocated = start_response.length;
 
 	// Read data from the ocilloscope.
 	downloaded = 0;
 	do {
+		if (downloaded + OWON_USB_READ_SIZE > allocated) {
+			allocated += OWON_USB_REALLOC_INCREMENT;
+			*buffer = realloc(*buffer, sizeof(uint8_t) * allocated);
+			if (*buffer == NULL)
+				return -ENOMEM;
+		}
+
 		ret = usb_bulk_read(dev_handle, OWON_USB_ENDPOINT_IN, *buffer + downloaded,
 				    0xffff, OWON_USB_TRANSFER_TIMEOUT);
 
