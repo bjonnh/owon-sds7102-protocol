@@ -170,7 +170,7 @@ int owon_usb_read(struct usb_dev_handle *dev_handle, char **buffer,
 		}
 
 		ret = usb_bulk_read(dev_handle, OWON_USB_ENDPOINT_IN, *buffer + downloaded,
-				    0xffff, OWON_USB_TRANSFER_TIMEOUT);
+				    OWON_USB_READ_SIZE, OWON_USB_TRANSFER_TIMEOUT);
 
 		if (ret > 0)
 			downloaded += ret;
