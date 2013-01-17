@@ -55,24 +55,24 @@ static float _timescale_table[] = {
 };
 
 static float get_real_timescale(uint32_t timescale) {
-	if (timescale > ARRAY_LENGTH(_timescale_table)) {
-		return(_timescale_table[ARRAY_LENGTH(_timescale_table)]);
+	if (timescale >= ARRAY_LENGTH(_timescale_table)) {
+		return(_timescale_table[ARRAY_LENGTH(_timescale_table) - 1]);
 	} else {
 		return(_timescale_table[timescale]);
 	}
 }
 
 static float get_real_attenuation(uint32_t attenuation) {
-	if (attenuation > ARRAY_LENGTH(_attenuation_table)) {
-		return(_attenuation_table[ARRAY_LENGTH(_attenuation_table)]);
+	if (attenuation >= ARRAY_LENGTH(_attenuation_table)) {
+		return(_attenuation_table[ARRAY_LENGTH(_attenuation_table) - 1]);
 	} else {
 		return(_attenuation_table[attenuation]);
 	}
 }
 
 static float get_real_voltscale(uint32_t volt) {
-	if (volt > ARRAY_LENGTH(_volt_table)) {
-		return(_volt_table[ARRAY_LENGTH(_volt_table)]);
+	if (volt >= ARRAY_LENGTH(_volt_table)) {
+		return(_volt_table[ARRAY_LENGTH(_volt_table) - 1]);
 	} else {
 		return(_volt_table[volt]);
 	}
