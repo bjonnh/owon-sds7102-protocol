@@ -17,7 +17,7 @@ typedef struct {
   uint32_t samples_count;
   uint32_t samples_file;
   uint32_t samples3;
-  float timediv;
+  double timediv;
   int32_t offsety;
   float voltsdiv;
   uint32_t attenuation;
