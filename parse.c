@@ -345,7 +345,7 @@ int owon_output_csv(HEADER_st *header, FILE *file ) {
 
   size_t max;
   if (header->channels_count >= 1) { 
-    max=header->channels[0]->samples_count;
+    max=header->channels[0]->samples_file;
   }  else { 
     return 1;
   }
