@@ -25,7 +25,6 @@
 
 #define ARRAY_LENGTH(x) (sizeof(x)/sizeof(*(x)))
 
-
 // _attenuation_table and _volt_table are from the Levi Larsen app
 static float _attenuation_table[] = {1.0e0, 1.0e1, 1.0e2, 1.0e3}; // We are only sure for these
 static float _volt_table[] = {
@@ -52,7 +51,7 @@ static float _timescale_table[] = {
 	1.0e-1, 2.0e-1, 5.0e-1, // 100 ms
 	1.0e+0, 2.0e+0, 5.0e+0, // 1 s
 	1.0e+1, 2.0e+1, 5.0e+1, // 10 s
-	1.0e+2 // 100 s 
+	1.0e+2 // 100 s
 };
 
 static float get_real_timescale(uint32_t timescale) {
@@ -84,7 +83,7 @@ static void show_hex_uchar(unsigned char *data,unsigned int length) {
 	for(i=0;i<length;i++) {
 		if ((i % 0x10)==0) printf("\n%08X: ",i);
 		printf("%02X ",data[i]);
-	}  
+	}
 	printf("\n");
 }
 
@@ -93,7 +92,7 @@ static void show_hex_int16t(int16_t *data,unsigned int size) {
 	for(i=0;i<size;i++) {
 		if ((i % 0x10)==0) printf("\n%08X: ",i);
 		printf("%d ",(int16_t) data[i]);
-	}  
+	}
 	printf("\n");
 }
 
@@ -163,7 +162,7 @@ static void debug_file(HEADER_st *file_header) {
 		printf("Never seen\n");
 	}
 
-	printf("Unknown3\n");	      
+	printf("Unknown3\n");
 	show_hex_uchar(file_header->unknown3,8);
 #endif
 }
@@ -240,7 +239,7 @@ static void read_string(DATA_st *data, char *destination, size_t len) {
 
 // Parse a channel from data, len will be used to check if there is enough data
 
-static int parse_channel(DATA_st *data_s, CHANNEL_st *channel) 
+static int parse_channel(DATA_st *data_s, CHANNEL_st *channel)
 {
 	size_t i;
 
@@ -282,13 +281,13 @@ int owon_parse(char *buf,size_t len, HEADER_st *header)
 	DATA_st data;
 	DATA_st *data_s = &data;
 	CHANNEL_st **channel_p;
-  
+
 	data_s->data = buf;
 	data_s->data_p = buf;
 	data_s->len = len;
 
 	memset(header,0,sizeof(HEADER_st)); // Putting NULL in the structure for fields not present
- 
+
 	if (strncmp((data_s->data_p)+12,"SPB",3) == 0) {
 		header->length = read_32(data_s); // This is the length without the LAN header
 		header->unknown1 = read_32(data_s);
@@ -298,21 +297,21 @@ int owon_parse(char *buf,size_t len, HEADER_st *header)
 	read_string_nullify(data_s,header->model,sizeof(header->model));
 
 	header->intsize=read_32(data_s); // Not really the size ? It was in some models.
-  
+
 	if (header->intsize != 0xFFFFFF) { // For short files coming from official app
 		read_string_nullify(data_s,header->serial,sizeof(header->serial));
 
 		header->triggerstatus = read_char(data_s);
-    
+
 		header->unknownstatus = read_char(data_s);
 		header->unknownvalue1 = read_u32(data_s);
 		header->unknownvalue2 = read_char(data_s);
 		read_string(data_s,header->unknown3,sizeof(header->unknown3));
-    
-		//    debug_file(header);	   
+
+		//    debug_file(header);
 
 	}
-  
+
 	header->channels_count = 0;
 
 	while ((void *)data_s->data_p < (void *) data_s->data + data_s->len) {
@@ -331,7 +330,7 @@ int owon_parse(char *buf,size_t len, HEADER_st *header)
 			memset(header->channels[header->channels_count-1],0,sizeof(CHANNEL_st)); // Putting NULL in the structure for fields not present
 			parse_channel(data_s,header->channels[header->channels_count-1]);
 		}  else if (strncmp(data_s->data_p,"INFO",4) == 0) {
-      
+
 		}
 		data_s->data_p++;
 	}
