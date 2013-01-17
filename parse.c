@@ -275,7 +275,7 @@ static int parse_channel(DATA_st *data_s, CHANNEL_st *channel)
 	debug_channel(channel);
 }
 
-int owon_parse(char *buf,size_t len, HEADER_st *header)
+int owon_parse(const char * const buf, size_t len, HEADER_st *header)
 {
 	unsigned int i;
 	DATA_st data;

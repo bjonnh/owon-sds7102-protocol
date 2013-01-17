@@ -45,7 +45,7 @@ typedef struct {
 } HEADER_st;
 
 
-int owon_parse(char *buf,size_t len, HEADER_st *header);
+int owon_parse(const char * const buf, size_t len, HEADER_st *header);
 int owon_output_csv(HEADER_st *header, FILE *file);
 void owon_free_header(HEADER_st *header);
 

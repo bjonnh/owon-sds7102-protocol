@@ -85,13 +85,13 @@ int parse_cli(int argc, char **argv, struct owon_dump_params *params)
 	return 0;
 }
 
-int output_raw(FILE *fp, char *buffer, long length)
+int output_raw(FILE *fp, const char *buffer, long length)
 {
 	// Write data out
 	fwrite(buffer, sizeof(char), length, fp);
 }
 
-int output_csv(FILE *fp, char *buffer, long length)
+int output_csv(FILE *fp, const char *buffer, long length)
 {
 	HEADER_st header;
 
