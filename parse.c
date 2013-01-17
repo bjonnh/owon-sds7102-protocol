@@ -27,8 +27,8 @@
 
 
 // _attenuation_table and _volt_table are from the Levi Larsen app
-float _attenuation_table[] = {1.0e0, 1.0e1, 1.0e2, 1.0e3}; // We are only sure for these
-float _volt_table[] = {
+static float _attenuation_table[] = {1.0e0, 1.0e1, 1.0e2, 1.0e3}; // We are only sure for these
+static float _volt_table[] = {
   2.0e-3, 5.0e-3, // 1 mV
   1.0e-2, 2.0e-2, 5.0e-2, // 10 mV
   1.0e-1, 2.0e-1, 5.0e-1, // 100 mV
@@ -40,7 +40,7 @@ float _volt_table[] = {
 };
 
 // Only for SDS7102 need to allow different models
-float _timescale_table[] = {
+static float _timescale_table[] = {
   2.0e-9, 5.0e-9,  // 2 ns
   1.0e-8, 2.0e-8, 5.0e-8, // 10 ns
   1.0e-7, 2.0e-7, 5.0e-7, // 100 ns
@@ -55,7 +55,7 @@ float _timescale_table[] = {
   1.0e+2 // 100 s 
 };
 
-float get_real_timescale(uint32_t timescale) {
+static float get_real_timescale(uint32_t timescale) {
   if (timescale > ARRAY_LENGTH(_timescale_table)) {
     return(_timescale_table[ARRAY_LENGTH(_timescale_table)]);
   } else {
@@ -63,7 +63,7 @@ float get_real_timescale(uint32_t timescale) {
   }
 }
 
-float get_real_attenuation(uint32_t attenuation) {
+static float get_real_attenuation(uint32_t attenuation) {
   if (attenuation > ARRAY_LENGTH(_attenuation_table)) {
     return(_attenuation_table[ARRAY_LENGTH(_attenuation_table)]);
   } else {
@@ -71,7 +71,7 @@ float get_real_attenuation(uint32_t attenuation) {
   }
 }
 
-float get_real_voltscale(uint32_t volt) {
+static float get_real_voltscale(uint32_t volt) {
   if (volt > ARRAY_LENGTH(_volt_table)) {
     return(_volt_table[ARRAY_LENGTH(_volt_table)]);
   } else {
@@ -79,7 +79,7 @@ float get_real_voltscale(uint32_t volt) {
   }
 }
 
-void show_hex_uchar(unsigned char *data,unsigned int length) {
+static void show_hex_uchar(unsigned char *data,unsigned int length) {
   int i;
   for(i=0;i<length;i++) {
     if ((i % 0x10)==0) printf("\n%08X: ",i);
@@ -88,7 +88,7 @@ void show_hex_uchar(unsigned char *data,unsigned int length) {
   printf("\n");
 }
 
-void show_hex_int16t(int16_t *data,unsigned int size) {
+static void show_hex_int16t(int16_t *data,unsigned int size) {
   int i;
   for(i=0;i<size;i++) {
     if ((i % 0x10)==0) printf("\n%08X: ",i);
@@ -97,7 +97,7 @@ void show_hex_int16t(int16_t *data,unsigned int size) {
   printf("\n");
 }
 
-void debug_channel(CHANNEL_st *chan) {
+static void debug_channel(CHANNEL_st *chan) {
 #ifdef DEBUG_KNOWN
   printf("Channel name: %s\n",(*chan).name);
 #endif
@@ -128,7 +128,7 @@ void debug_channel(CHANNEL_st *chan) {
   //  show_hex_int16t((*chan).data,(*chan).samples_file);
 }
 
-void debug_file(HEADER_st *file_header) {
+static void debug_file(HEADER_st *file_header) {
   //printf("File length: %d\n",file_header->length);
 #ifdef DEBUG_UNKNOWN
   printf("Unknown1: %d\n",file_header->unknown1);
@@ -170,7 +170,7 @@ void debug_file(HEADER_st *file_header) {
 
 // Reading an unsigned 32 and increment the data_p position accordingly
 
-uint32_t read_u32(DATA_st *data) {
+static uint32_t read_u32(DATA_st *data) {
   uint32_t temp;
   temp = (uint32_t)(data->data_p[3]) << 24 |
     (uint32_t)(data->data_p[2]) << 16 |
@@ -182,7 +182,7 @@ uint32_t read_u32(DATA_st *data) {
 
 // Reading a signed 32 and increment the data_p position accordingly
 
-int32_t read_32(DATA_st *data) {
+static int32_t read_32(DATA_st *data) {
   int32_t temp;
   temp = (int32_t)(data->data_p[3]) << 24 |
     (int32_t)(data->data_p[2]) << 16 |
@@ -194,7 +194,7 @@ int32_t read_32(DATA_st *data) {
 
 // Reading a signed 16 and increment the data_p position accordingly
 
-int16_t read_16(DATA_st *data) {
+static int16_t read_16(DATA_st *data) {
   int16_t temp;
   temp = (int16_t)(data->data_p[1]) << 8  |
     (int16_t)(data->data_p[0]);
@@ -204,7 +204,7 @@ int16_t read_16(DATA_st *data) {
 
 // Reading a float and increment the data_p position accordingly
 
-float read_f(DATA_st *data) {
+static float read_f(DATA_st *data) {
   float temp;
 
   memcpy(&temp,&(*data->data_p),4);
@@ -215,7 +215,7 @@ float read_f(DATA_st *data) {
 
 // Reading a char and increment the data_p position accordingly
 
-unsigned char read_char(DATA_st *data) {
+static unsigned char read_char(DATA_st *data) {
   unsigned char temp;
   temp = (unsigned char)(*data->data_p);
   data->data_p += sizeof(unsigned char);
@@ -233,14 +233,14 @@ void read_string_nullify(DATA_st *data, char *destination, size_t len) {
 // Reading a string from *data_p of length len, and copying in the memory area at destination.
 // then increment data_p position
 
-void read_string(DATA_st *data, char *destination, size_t len) {
+static void read_string(DATA_st *data, char *destination, size_t len) {
   memcpy(destination,data->data_p,len);
   data->data_p += len;
 }
 
 // Parse a channel from data, len will be used to check if there is enough data
 
-int parse_channel(DATA_st *data_s, CHANNEL_st *channel) 
+static int parse_channel(DATA_st *data_s, CHANNEL_st *channel) 
 {
   size_t i;
 
@@ -275,7 +275,6 @@ int parse_channel(DATA_st *data_s, CHANNEL_st *channel)
 
   debug_channel(channel);
 }
-
 
 int owon_parse(char *buf,size_t len, HEADER_st *header)
 {
@@ -339,39 +338,75 @@ int owon_parse(char *buf,size_t len, HEADER_st *header)
   return(0);
 }
 
+static float sample_id_to_time(const HEADER_st *header, uint32_t sample)
+{
+	if (!header->channels_count)
+		return -1.0;
+
+	return header->channels[0]->timediv * 10.0 * sample / header->channels[0]->samples_count;
+}
+
+static float sample_to_volt(HEADER_st *header, uint8_t channel, uint32_t sample)
+{
+	uint8_t val, prev, next;;
+
+	if (!header->channels_count)
+		return -1.0;
+
+	val = header->channels[channel]->data[sample];
+	if (val == 0xff) {
+		prev = next = 0xff;
+		if (sample > 1)
+			prev = header->channels[channel]->data[sample - 1];
+		if (sample < header->channels[channel]->samples_count - 1)
+			next = header->channels[channel]->data[sample + 1];
+
+		if (prev != 0xff && next != 0xff)
+			val = ((uint16_t)next + (uint16_t)prev) / 2;
+		else if (prev != 0xff)
+			val = prev;
+		else if (next != 0xff)
+			val = next;
+		else
+			val = 0;
+		header->channels[channel]->data[sample] = val;
+		fprintf(stderr, "Replaced sample 0x%x (was 0xff, now is 0x%x  as prev = 0x%x and next = 0x%x)\n",
+			sample, val, prev, next);
+	}
+	
+
+	return val * 2 / 5 * header->channels[channel]->voltsdiv;
+}
+
 int owon_output_csv(HEADER_st *header, FILE *file ) {
-  size_t sample;
-  size_t channel;
+	channels_count = header->channels_count;
+	if (channels_count < 1)
+		return 1;
+	samples_count = header->channels[0]->samples_file;
 
-  size_t max;
-  if (header->channels_count >= 1) { 
-    max=header->channels[0]->samples_file;
-  }  else { 
-    return 1;
-  }
-  fprintf(file, "time");
-  for (channel = 0; channel < header->channels_count; channel++) {
-    fprintf(file, ",channel %i", channel + 1);
-  }
-  fprintf(file, "\n");
 
-  for (sample=0;sample<max;sample++) { // Assuming the number of samples is the same in each channels
-    if (header->channels_count >= 1) {
-      fprintf(file,"%f,",header->channels[0]->timediv*10/header->channels[0]->samples_count*sample);
+	/* add the header to the CSV */
+	fprintf(file, "time");
+	for (channel = 0; channel < channels_count; channel++)
+		fprintf(file, ",channel %i", channel + 1);
+	fprintf(file, "\n");
 
-    for(channel=0;channel<header->channels_count;channel++) {
-      fprintf(file,"%f,",header->channels[channel]->data[sample]*2/5*header->channels[channel]->voltsdiv);
-    }
-    }   
-    fprintf(file,"\n");
-  }
+	/* add the actual data */
+	for (sample = 0; sample < samples_count; sample++) {
+		fprintf(file, "%f", sample_id_to_time(header, sample));
+
+		for(channel=0; channel<channels_count; channel++)
+			fprintf(file, ",%f", sample_to_volt(header, channel, sample));
+
+		fprintf(file,"\n");
+	}
 }
 
 void owon_free_header(HEADER_st *header) {
-  int i;
-  for (i=0;i<header->channels_count;i++) {
-    free(header->channels[i]->data);
-    free(header->channels[i]);
-  }
-  free(header->channels);
+	int i;
+	for (i=0;i<header->channels_count;i++) {
+		free(header->channels[i]->data);
+		free(header->channels[i]);
+	}
+	free(header->channels);
 }
