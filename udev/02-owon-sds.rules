@@ -1,2 +1,2 @@
-SUBSYSTEM=="usb", ATTRS{idVendor}=="5345", ATTRS{idProduct}=="1234", GROUP:="uucp", MODE:="0660"
+SUBSYSTEM=="usb", ENV{ID_VENDOR_ID}=="5345", ENV{ID_MODEL_ID}=="1234", GROUP:="uucp", MODE:="0660"
 SUBSYSTEM=="usb", MODE:="0664", GROUP:="uucp"
