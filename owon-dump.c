@@ -39,7 +39,7 @@ struct owon_dump_params {
 
 void usage(int argc, char **argv)
 {
-	printf("usage: %s [-d device_number] [-m (bmp|bin|memdepth|debugtxt)] [-p (raw|csv)] [-f output_file]", argv[0]);
+	printf("usage: %s [-m (bmp|bin|memdepth|debugtxt)] [-p (raw|csv)] [-f output_file]", argv[0]);
 	exit(EXIT_FAILURE);
 }
 
@@ -64,7 +64,7 @@ int parse_cli(int argc, char **argv, struct owon_dump_params *params)
 	params->output = DUMP_OUTPUT_RAW;
 	params->filename = NULL;
 
-	while ((c = getopt (argc, argv, "m:o:f")) != -1) {
+	while ((c = getopt (argc, argv, "m:o:f:")) != -1) {
 		switch (c) {
 /*			case 'd':
 				sscanf(optarg, "%d", &params->dnum);
