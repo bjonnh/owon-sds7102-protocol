@@ -171,16 +171,19 @@ struct libusb_device_handle *owon_usb_easy_open(int dnum) {
 
 int owon_get_response(struct owon_start_command *cmd, struct libusb_device_handle *dev_handle, struct owon_start_response *start_response)
 {
-	int ret=0;
+	int ret=-255;
 	uint32_t transferred = 0;
-
+	uint8_t tries=3;
 	char start_response2[0x0c];
-	ret = libusb_bulk_transfer(dev_handle, 
-		OWON_USB_ENDPOINT_IN, 
-			    (char *) start_response2, 
-			    sizeof(start_response2), &transferred,
-			    OWON_USB_TRANSFER_TIMEOUT);
+	do {
 
+		ret = libusb_bulk_transfer(dev_handle, 
+					   OWON_USB_ENDPOINT_IN, 
+					   (char *) start_response2, 
+					   sizeof(start_response2), &transferred,
+					   OWON_USB_TRANSFER_TIMEOUT);
+		fprintf(stderr,"Try %d ret=%d\n",3-tries,ret);
+	} while (tries-->0 && ret<0);
 	fprintf(stderr,"Get_response code=%d  transferred=%d size=%d\n",ret,transferred,sizeof(start_response2));
 
 	if (ret<0)
@@ -263,17 +266,25 @@ int owon_usb_read(struct libusb_device_handle *dev_handle, unsigned char **buffe
 		int forloop;
 		forloop=start_response.length;
 	do {
-
-		ret = libusb_bulk_transfer(dev_handle, OWON_USB_ENDPOINT_IN, *buffer + downloaded,
-					   64,&transferred, 50000);
+		int tries=3;
+		ret=-255;
+		do {
+			ret = libusb_bulk_transfer(dev_handle, OWON_USB_ENDPOINT_IN, *buffer + downloaded,
+						   131072,&transferred, 50000);
+			if (ret<0) {
+				fprintf(stderr,"Try %d ret=%d transf=%d\n",3-tries,ret,transferred);
+				usleep(100);
+			}
+		} while (tries-->0 && ret<0);
 
 		forloop -= transferred;
 		downloaded += transferred;
 
 		if (ret==-1)
 			return -1;
+		fprintf(stderr,"%d/%d %d %% (rest=%d) ret=%d transferred=%d\n",downloaded,allocated,100*downloaded/allocated,forloop,ret,transferred);
 	} while (allocated > downloaded);
-	fprintf(stderr,"%d/%d %d %% (rest=%d) ret=%d\n",downloaded,allocated,100*downloaded/allocated,forloop,ret);
+//	fprintf(stderr,"%d/%d %d %% (rest=%d) ret=%d\n",downloaded,allocated,100*downloaded/allocated,forloop,ret);
 	} while (multipart != 0);
 	fprintf(stderr,"Downloaded: %d\n",downloaded);
 	return downloaded; 
