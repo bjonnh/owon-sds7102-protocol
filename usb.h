@@ -1,4 +1,9 @@
 /*
+ * The usb part of owon-dump
+ * Copyright (c) 2012, 2013, 2014 Jonathan Bisson <bjonnh-owon@bjonnh.net>
+ *                    Martin Peres <>
+ * 
+ * Based on:
  * owon-utils - a set of programs to use with OWON Oscilloscopes
  * Copyright (c) 2012  Levi Larsen <levi.larsen@gmail.com>
  *
@@ -19,8 +24,10 @@
 #ifndef __OWON__USB_H__
 #define __OWON__USB_H__
 
+#include <libusb.h>
+
 #ifndef USB_DEBUG
-#define USB_DEBUG 1
+#define USB_DEBUG 3
 #endif
 
 #define OWON_USB_VENDOR_ID 0x5345
@@ -53,11 +60,11 @@ enum owon_output_type {
 };
 
 void owon_usb_init(void);
-struct usb_device *owon_usb_get_device(int dnum);
+struct libusb_device_handle *owon_usb_get_device(int dnum);
 size_t owon_usb_get_device_count();
-struct usb_dev_handle *owon_usb_easy_open(int dnum);
-struct usb_dev_handle *owon_usb_open(struct usb_device *dev);
-int owon_usb_read(struct usb_dev_handle *dev_handle, char **buffer, enum owon_start_command_type type);
-void owon_usb_close(struct usb_dev_handle *dev_handle);
-
+struct libusb_device_handle *owon_usb_easy_open(int dnum);
+struct libusb_device_handle *owon_usb_open(struct libusb_device_handle *dev);
+int owon_usb_read(struct libusb_device_handle *dev_handle, unsigned char **buffer, enum owon_start_command_type type);
+void owon_usb_close(struct libusb_device_handle *dev_handle);
+int owon_usb_is_managed(void *device);
 #endif // __OWON__USB_H__

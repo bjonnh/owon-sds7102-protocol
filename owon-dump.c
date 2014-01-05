@@ -1,3 +1,26 @@
+/*
+ * Owon-dump, dumping data from Owon oscilloscopes
+ * Copyright (c) 2012, 2013, 2014 Jonathan Bisson <bjonnh-owon@bjonnh.net>
+ *                    Martin Peres <martin.peres@free.fr>
+ * 
+ * Based on:
+ * owon-utils - a set of programs to use with OWON Oscilloscopes
+ * Copyright (c) 2012  Levi Larsen <levi.larsen@gmail.com>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -20,7 +43,7 @@ void usage(int argc, char **argv)
 	exit(EXIT_FAILURE);
 }
 
-void list_devices()
+/*void list_devices()
 {
 	size_t count, i;
 
@@ -28,13 +51,9 @@ void list_devices()
 	count = owon_usb_get_device_count();
 
 	printf("Owon-dump: %u devices\n", count);
-	for (i = 0; i < count; i++) {
-		struct usb_device *dev = owon_usb_get_device(i);
-		printf("	%u: bus %s device %u\n", i, dev->bus->dirname, dev->devnum);
-	}
-	
+
 	exit(EXIT_SUCCESS);
-}
+	}*/
 
 int parse_cli(int argc, char **argv, struct owon_dump_params *params)
 {
@@ -45,11 +64,11 @@ int parse_cli(int argc, char **argv, struct owon_dump_params *params)
 	params->output = DUMP_OUTPUT_RAW;
 	params->filename = NULL;
 
-	while ((c = getopt (argc, argv, "d:m:o:f:l")) != -1) {
+	while ((c = getopt (argc, argv, "m:o:f")) != -1) {
 		switch (c) {
-			case 'd':
+/*			case 'd':
 				sscanf(optarg, "%d", &params->dnum);
-				break;
+				break;*/
 			case 'm':
 				if (strcasecmp(optarg, "bmp") == 0)
 					params->mode = DUMP_BMP;
@@ -73,9 +92,9 @@ int parse_cli(int argc, char **argv, struct owon_dump_params *params)
 			case 'f':
 				params->filename = strdup(optarg);
 				break;
-			case 'l':
+/*			case 'l':
 				list_devices();
-				break;
+				break;*/
 			default:
 				usage(argc, argv);
 				break;
@@ -109,19 +128,27 @@ int main (int argc, char **argv)
 	if (parse_cli(argc, argv, &params))
 		usage(argc, argv);
 
-	struct usb_dev_handle *dev_handle = owon_usb_easy_open(params.dnum);
-	if (!dev_handle)
-		return 2;
 	
-	char *buffer;
-	long length = 0;
+	unsigned char *buffer;
+	long length = -1;
+	
+	struct libusb_device_handle *dev_handle = owon_usb_easy_open(params.dnum);
+	if (!dev_handle) {
+		fprintf(stderr,"USB: Impossible to connect to device.\n");
+		return 2;
+	}
+
 	length = owon_usb_read(dev_handle, &buffer, params.mode);
 	owon_usb_close(dev_handle);
-	if (0 > length) {
+
+	if (0 >= length) {
+		libusb_clear_halt(dev_handle,OWON_USB_ENDPOINT_IN);
+		libusb_clear_halt(dev_handle,OWON_USB_ENDPOINT_OUT);
+		libusb_reset_device(dev_handle);
 		fprintf(stderr, "Error reading from device: %li\n", length);
 		exit(EXIT_FAILURE);
 	}
-	
+	fprintf(stderr,"Writing file of length %d\n",length);
 	// Get file pointer to file or stdout.
 	FILE *fp;
 	if (NULL == params.filename) {

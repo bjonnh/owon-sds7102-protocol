@@ -1,4 +1,9 @@
 /*
+ * The usb part of owon-dump
+ * Copyright (c) 2012, 2013, 2014 Jonathan Bisson <bjonnh-owon@bjonnh.net>
+ *                    Martin Peres <>
+ * 
+ * Based on:
  * owon-utils - a set of programs to use with OWON Oscilloscopes
  * Copyright (c) 2012  Levi Larsen <levi.larsen@gmail.com>
  *
@@ -19,14 +24,14 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <stdlib.h>
 #include <errno.h>
 
-#include <usb.h>
 #include "usb.h"
 #include "owon.h"
 
 struct owon_start_command {
-	const char *start;
+	char *start;
 	uint8_t response_length;
 } commands[] = {
 	{ "STARTBMP", 12 },
@@ -38,92 +43,164 @@ struct owon_start_command {
 struct owon_start_response {
 	unsigned int length;
 	unsigned int unknown;
-	unsigned int bitmap; // 0 for waveform, 1 for bitmap
+	unsigned int flag; // 0 for waveform, 1 for bitmap, 128 if multipart
 };
 
+struct libusb_context *ctx = NULL;
+
 void owon_usb_init() {
-    usb_init();
-    usb_set_debug(USB_DEBUG);
+	libusb_init(&ctx);
+	libusb_set_debug(ctx, USB_DEBUG);
 }
 
 size_t owon_usb_get_device_count() {
 	size_t count = 0;
 
-	usb_find_busses();
-	usb_find_devices();
+	struct libusb_device **list;
+        struct libusb_device *found = NULL;
+	ssize_t cnt = libusb_get_device_list(NULL, &list);
+	ssize_t i = 0;
+	int err = 0;
+	if (cnt < 0)
+		fprintf(stderr,"Error getting the device count\n");
+		return -1;
 
-	struct usb_bus *bus;
-	struct usb_device *dev;
-
-	for (bus = usb_get_busses(); bus; bus = bus->next) {
-		for (dev = bus->devices; dev; dev = dev->next) {
-			if (dev->descriptor.idVendor == OWON_USB_VENDOR_ID &&
-				dev->descriptor.idProduct == OWON_USB_PRODUCT_ID) {
-					count++;
-			}
+	for (i = 0; i < cnt; i++) {
+		struct libusb_device *device = list[i];
+		err = owon_usb_is_managed(device);
+		if (err>0)
+			count++;
+		if (err<0) {
+			fprint(stderr,"Failed to list devices CODE=%d\n",err);
+			libusb_free_device_list(list, 1);
+			return -1;
 		}
+		
 	}
-
+	libusb_free_device_list(list, 1);
 	return count;
 }
 
-struct usb_device *owon_usb_get_device(int dnum) {
-	usb_find_busses();
-	usb_find_devices();
 
-	struct usb_bus *bus;
-	struct usb_device *dev;
+// Returns 1 if the device is managed
+// TODO: Add other Product_ID (testers needed)
+int owon_usb_is_managed(void *device) {
+	struct libusb_device_descriptor desc;
+	struct libusb_device_handle *handle = NULL;
+	
+	int ret=0,err=0;
 
-	for (bus = usb_get_busses(); bus; bus = bus->next) {
-		for (dev = bus->devices; dev; dev = dev->next) {
-			if (dev->descriptor.idVendor == OWON_USB_VENDOR_ID &&
-				dev->descriptor.idProduct == OWON_USB_PRODUCT_ID) {
-					if (dnum == 0)
-						return dev;
-					else
-						dnum--;
-			}
-		}
+	ret = libusb_get_device_descriptor(device, &desc);
+	if (ret < 0) 
+		return -1;
+	err = libusb_open(device,&handle);
+	if (err < 0) {
+		libusb_close(handle);
+		return -2;
 	}
-
-	return NULL;
+	if (desc.idVendor == OWON_USB_VENDOR_ID && desc.idProduct == OWON_USB_PRODUCT_ID) {
+		libusb_close(handle);
+		return 1;
+	}
+	libusb_close(handle);
+	return 0;
 }
 
-struct usb_dev_handle *owon_usb_open(struct usb_device *dev) {
-	struct usb_dev_handle *dev_handle = usb_open(dev);
-	int ret;
-	ret = usb_set_configuration(dev_handle, OWON_USB_CONFIGURATION);
-	ret |= usb_claim_interface(dev_handle, OWON_USB_INTERFACE);
-	if (0 > ret) {
+struct libusb_device_handle *owon_usb_get_device(int dnum) {
+	size_t count = 0;
+
+	struct libusb_device **list;
+        struct libusb_device *found = NULL;
+	struct libusb_device_handle *dev_handle = NULL;
+	ssize_t cnt = libusb_get_device_list(NULL, &list);
+	ssize_t i = 0;
+	int err = 0;
+	if (cnt < 0) {
+		fprintf(stderr,"Error getting the device count\n");
+		return 0;
+	}
+	
+	for (i = 0; i < cnt; i++) {
+		struct libusb_device *device = list[i];
+		if (owon_usb_is_managed(device)) // TODO: Manage multiple oscilloscopes on the same computer
+			found = device;
+	}
+	libusb_free_device_list(list, 1);
+	
+	if (NULL != found) {
+		err = libusb_open(found,&dev_handle);
+		if (err != 0) {
+			return NULL;
+		}
+	} else {
+		fprintf(stderr, "Device not found\n");
 		return NULL;
 	}
-	usb_reset(dev_handle);
 	return dev_handle;
 }
 
-struct usb_dev_handle *owon_usb_easy_open(int dnum) {
-	owon_usb_init();
+struct libusb_device_handle *owon_usb_open(struct libusb_device_handle *dev_handle) {
+	int ret=0;
+	int cfg;
+	ret = libusb_get_configuration(dev_handle, &cfg);
+	if (cfg != OWON_USB_CONFIGURATION)
+		ret = libusb_set_configuration(dev_handle, OWON_USB_CONFIGURATION);
+	ret |= libusb_claim_interface(dev_handle, OWON_USB_INTERFACE);
 
-	struct usb_device *dev = owon_usb_get_device(dnum);
-	if (NULL == dev) {
-		fprintf(stderr, "No devices found\n");
-		exit(EXIT_FAILURE);
+	if (0 > ret) {
+		fprintf(stderr,"USB_Configuration error\n");
+		return NULL;
 	}
 
-	struct usb_dev_handle *dev_handle = owon_usb_open(dev);
+	return dev_handle;
+}
+
+struct libusb_device_handle *owon_usb_easy_open(int dnum) {
+	owon_usb_init();
+	
+	struct libusb_device_handle *dev_handle = owon_usb_get_device(dnum);
+       
 	if (NULL == dev_handle) {
 		fprintf(stderr, "Unable to open device\n");
-		exit(EXIT_FAILURE);
+		return NULL;
 	}
+	dev_handle = owon_usb_open(dev_handle);
 
 	return dev_handle;
 }
 
-int owon_usb_read(struct usb_dev_handle *dev_handle, char **buffer,
+int owon_get_response(struct owon_start_command *cmd, struct libusb_device_handle *dev_handle, struct owon_start_response *start_response)
+{
+	int ret=0;
+	uint32_t transferred = 0;
+
+	char start_response2[0x0c];
+	ret = libusb_bulk_transfer(dev_handle, 
+		OWON_USB_ENDPOINT_IN, 
+			    (char *) start_response2, 
+			    sizeof(start_response2), &transferred,
+			    OWON_USB_TRANSFER_TIMEOUT);
+
+	fprintf(stderr,"Get_response code=%d  transferred=%d size=%d\n",ret,transferred,sizeof(start_response2));
+
+	if (ret<0)
+		return -1;
+
+	if (cmd->response_length != transferred && transferred!=0) {
+		fprintf(stderr, "error usb: ret = %i resplength=%d, transferred=%d\n", ret,cmd->response_length,transferred);
+		return -1;
+	}
+	memcpy(start_response,&start_response2,sizeof(start_response2));
+	return 0;
+}
+
+int owon_usb_read(struct libusb_device_handle *dev_handle, unsigned char **buffer,
 		  enum owon_start_command_type type) {
 	struct owon_start_command *cmd;
+	struct owon_start_response start_response;
+	int multipart = 0;
 	uint32_t allocated = 0, downloaded = 0;
-	
+	uint32_t transferred = 0;
 	if (type >= DUMP_COUNT)
 		return -1;
 
@@ -131,58 +208,80 @@ int owon_usb_read(struct usb_dev_handle *dev_handle, char **buffer,
 
 	// Send the START command.
 	int ret;
-	ret = usb_bulk_write(dev_handle, 
-		OWON_USB_ENDPOINT_OUT, 
-		cmd->start, 
-		strlen(cmd->start), 
-		OWON_USB_TRANSFER_TIMEOUT);
-	if (strlen(cmd->start) != ret) {
+
+	ret = libusb_bulk_transfer(dev_handle,OWON_USB_ENDPOINT_OUT,cmd->start,strlen(cmd->start),&transferred,OWON_USB_TRANSFER_TIMEOUT);    
+	if (strlen(cmd->start) != transferred || ret!=0) {
+		fprintf(stderr,"Command send error ret=%d\n",ret);
 		return OWON_ERROR_USB;
 	}
-
+	
 	// Get the response back.
-	struct owon_start_response start_response;
-	ret = usb_bulk_read(dev_handle, 
-		OWON_USB_ENDPOINT_IN, 
-		(char *)&start_response, 
-		cmd->response_length, 
-		OWON_USB_TRANSFER_TIMEOUT);
-	if (cmd->response_length != ret) {
-		fprintf(stderr, "error usb: ret = %i\n", ret);
-		return OWON_ERROR_USB;
-	}
 
-	// Allocate enough memory to hold the data from the ocilloscope.
-	*buffer = malloc(start_response.length);
-	if (NULL == *buffer) {
-		return OWON_ERROR_MEMORY;
-	}
-	allocated = start_response.length;
-
-	// Read data from the ocilloscope.
-	downloaded = 0;
 	do {
-		if (downloaded + OWON_USB_READ_SIZE > allocated) {
-			allocated += OWON_USB_REALLOC_INCREMENT;
-			*buffer = realloc(*buffer, sizeof(uint8_t) * allocated);
-			if (*buffer == NULL)
-				return -ENOMEM;
+		ret = owon_get_response(cmd, dev_handle, &start_response);
+	
+		fprintf(stderr,"resp: ret=%d",ret);
+		if (ret>=0)
+			fprintf(stderr," %d %d %d ", start_response.length,start_response.unknown,start_response.flag);
+		fprintf(stderr,"\n");
+		if (ret == -1) {
+			if (multipart==1 && start_response.length==0) {
+				return downloaded;
+			}
+			if (allocated==downloaded) {
+				return downloaded;
+			}
+			return -1;
+		}
+		if (start_response.flag > 128) {
+			fprintf(stderr,"Multipart\n");
+			multipart=1;
+		} else {
+			multipart=0;
 		}
 
-		ret = usb_bulk_read(dev_handle, OWON_USB_ENDPOINT_IN, *buffer + downloaded,
-				    0xffff, OWON_USB_TRANSFER_TIMEOUT);
+		// Allocate enough memory to hold the data from the ocilloscope.
+		if (allocated == 0) {
+			fprintf(stderr,"Allocating %d\n",start_response.length);
+			*buffer = malloc(start_response.length);
+			if (NULL == *buffer) {
+				fprintf(stderr,"Error allocating %d\n",start_response.length);
+				return OWON_ERROR_MEMORY;
+			}
+			allocated = start_response.length;
+		} else {
+			fprintf(stderr,"Reallocating %d\n",start_response.length+allocated);
+			*buffer = realloc(*buffer, start_response.length + allocated);
+			if (*buffer == NULL) {
+				fprintf(stderr,"Error reallocating %d\n",start_response.length+allocated);
+				return OWON_ERROR_MEMORY;
+			}
+			allocated += start_response.length;
+		}
+     
+	// Read data from the ocilloscope.
+		int forloop;
+		forloop=start_response.length;
+	do {
 
-		if (ret > 0)
-			downloaded += ret;
-	} while (ret > 0);
+		ret = libusb_bulk_transfer(dev_handle, OWON_USB_ENDPOINT_IN, *buffer + downloaded,
+					   64,&transferred, 50000);
 
+		forloop -= transferred;
+		downloaded += transferred;
+
+		if (ret==-1)
+			return -1;
+	} while (allocated > downloaded);
+	fprintf(stderr,"%d/%d %d %% (rest=%d) ret=%d\n",downloaded,allocated,100*downloaded/allocated,forloop,ret);
+	} while (multipart != 0);
+	fprintf(stderr,"Downloaded: %d\n",downloaded);
 	return downloaded; 
 }
 
-void owon_usb_close(struct usb_dev_handle *dev_handle) {
-	usb_clear_halt(dev_handle, OWON_USB_ENDPOINT_IN);
-	usb_clear_halt(dev_handle, OWON_USB_ENDPOINT_OUT);
-	usb_release_interface(dev_handle, OWON_USB_INTERFACE);
-	usb_close(dev_handle);
+void owon_usb_close(struct libusb_device_handle *dev_handle) {
+	libusb_release_interface(dev_handle, OWON_USB_INTERFACE);
+	libusb_close(dev_handle);
+	libusb_exit(ctx);
 }
 
