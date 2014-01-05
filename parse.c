@@ -25,21 +25,18 @@
 
 #define ARRAY_LENGTH(x) (sizeof(x)/sizeof(*(x)))
 
-// _attenuation_table and _volt_table are from the Levi Larsen app
-static float _attenuation_table[] = {1.0e0, 1.0e1, 1.0e2, 1.0e3}; // We are only sure for these
+// _attenuation_table is from the Levi Larsen app
+static float _attenuation_table[] = { 1.0e0, 1.0e1, 1.0e2, 1.0e3 }; // We are only sure for these
 static float _volt_table[] = {
-	2.0e-3, 5.0e-3, // 1 mV
-	1.0e-2, 2.0e-2, 5.0e-2, // 10 mV
+	2.0e-2, 5.0e-2, // 10 mV
 	1.0e-1, 2.0e-1, 5.0e-1, // 100 mV
 	1.0e+0, 2.0e+0, 5.0e+0, // 1 V
 	1.0e+1, 2.0e+1, 5.0e+1, // 10 V
-	1.0e+2, 2.0e+2, 5.0e+2, // 100 V
-	1.0e+3, 2.0e+3, 5.0e+3, // 1 kV
-	1.0e+4		  // 10 kV
+	1.0e+2 // 100 V
 };
 
 // Only for SDS7102 need to allow different models
-static float _timescale_table[] = {
+static double _timescale_table[] = {
 	2.0e-9, 5.0e-9,  // 2 ns
 	1.0e-8, 2.0e-8, 5.0e-8, // 10 ns
 	1.0e-7, 2.0e-7, 5.0e-7, // 100 ns
@@ -54,25 +51,25 @@ static float _timescale_table[] = {
 	1.0e+2 // 100 s
 };
 
-static float get_real_timescale(uint32_t timescale) {
-	if (timescale > ARRAY_LENGTH(_timescale_table)) {
-		return(_timescale_table[ARRAY_LENGTH(_timescale_table)]);
+static double get_real_timescale(uint32_t timescale) {
+	if (timescale >= ARRAY_LENGTH(_timescale_table)) {
+		return(_timescale_table[ARRAY_LENGTH(_timescale_table) - 1]);
 	} else {
 		return(_timescale_table[timescale]);
 	}
 }
 
 static float get_real_attenuation(uint32_t attenuation) {
-	if (attenuation > ARRAY_LENGTH(_attenuation_table)) {
-		return(_attenuation_table[ARRAY_LENGTH(_attenuation_table)]);
+	if (attenuation >= ARRAY_LENGTH(_attenuation_table)) {
+		return(_attenuation_table[ARRAY_LENGTH(_attenuation_table) - 1]);
 	} else {
 		return(_attenuation_table[attenuation]);
 	}
 }
 
 static float get_real_voltscale(uint32_t volt) {
-	if (volt > ARRAY_LENGTH(_volt_table)) {
-		return(_volt_table[ARRAY_LENGTH(_volt_table)]);
+	if (volt >= ARRAY_LENGTH(_volt_table)) {
+		return(_volt_table[ARRAY_LENGTH(_volt_table) - 1]);
 	} else {
 		return(_volt_table[volt]);
 	}
@@ -356,6 +353,37 @@ static float sample_to_volt(HEADER_st *header, uint8_t channel, uint32_t sample)
 	return val * 2.0 * header->channels[channel]->voltsdiv / 5.0;
 }
 
+static void volt_scale_to_string(float volt_scale, uint32_t *val, const char **unit)
+{
+	if (volt_scale < 1) {
+		*val = volt_scale * 1000;
+		*unit = "mV";
+	} else if (volt_scale < 1000) {
+		*val = volt_scale;
+		*unit = "V";
+	} else {
+		*val = volt_scale / 1000;
+		*unit = "kV";
+	}
+}
+
+static void time_scale_to_string(double time_scale, uint32_t *val, const char **unit)
+{
+	if (time_scale < 0.000001) {
+		*val = time_scale * 1.0e9;
+		*unit = "ns";
+	} else if (time_scale < 0.001) {
+		*val = time_scale * 1000000;
+		*unit = "us";
+	} else if (time_scale < 1) {
+		*val = time_scale * 1000;
+		*unit = "ms";
+	} else {
+		*val = time_scale;
+		*unit = "s";
+	}
+}
+
 int owon_output_csv(HEADER_st *header, FILE *file ) {
 	size_t sample, channel, channels_count, samples_count;
 
@@ -367,8 +395,16 @@ int owon_output_csv(HEADER_st *header, FILE *file ) {
 
 	/* add the header to the CSV */
 	fprintf(file, "time");
-	for (channel = 0; channel < channels_count; channel++)
-		fprintf(file, ",channel %i", channel + 1);
+	for (channel = 0; channel < channels_count; channel++) {
+		const char *time_unit, *volt_unit;
+		uint32_t time_val, volt_val;
+
+		time_scale_to_string(header->channels[channel]->timediv, &time_val, &time_unit);
+		volt_scale_to_string(header->channels[channel]->voltsdiv, &volt_val, &volt_unit);
+		fprintf(file, ",channel %i (Att %u, %u %s/div, %u %s/div)",
+			channel + 1, header->channels[channel]->attenuation,
+			volt_val, volt_unit, time_val, time_unit);
+	}
 	fprintf(file, "\n");
 
 	/* add the actual data */
