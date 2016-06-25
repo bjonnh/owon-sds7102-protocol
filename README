@@ -5,8 +5,17 @@ Tested with:
 Owon SDS7103
 Owon SDS5032 (Thanks Tony R.)
 
-If you need any assistance or have suggestions contact bjonnh-owon at bjonnh.net
+To build:
+Install cmake
 
+and run:
+
+cmake .
+then
+make
+
+
+If you need any assistance or have suggestions contact bjonnh-owon at bjonnh.net
 
 
 
