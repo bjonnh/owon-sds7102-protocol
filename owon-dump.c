@@ -39,7 +39,7 @@ struct owon_dump_params {
 
 void usage(int argc, char **argv)
 {
-	printf("usage: %s [-m (bmp|bin|memdepth|debugtxt)] [-p (raw|csv)] [-f output_file]", argv[0]);
+	printf("usage: %s [-m (bmp|bin|memdepth|debugtxt)] [-o (raw|csv)] [-f output_file]", argv[0]);
 	exit(EXIT_FAILURE);
 }
 
