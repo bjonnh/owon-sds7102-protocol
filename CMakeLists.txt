@@ -18,6 +18,8 @@ target_link_libraries(owon-parse owon-sds7102 ${LIBUSB_LIBRARIES})
 install(TARGETS owon-sds7102 DESTINATION lib)
 install(TARGETS owon-dump DESTINATION bin)
 
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall -g -DDEBUG_KNOWN -DDEBUG_UNKNOWN")
+
 #Messages
 message("")
 message("-- Summary:")

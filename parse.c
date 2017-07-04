@@ -284,19 +284,33 @@ int owon_parse(const char * const buf, size_t len, HEADER_st *header)
 	data_s->len = len;
 
 	memset(header,0,sizeof(HEADER_st)); // Putting NULL in the structure for fields not present
-
+  // This is used only with data coming over usb, we jump the first 12 bytes.
 	if (strncmp((data_s->data_p)+12,"SPB",3) == 0) {
 		header->length = read_32(data_s); // This is the length without the LAN header
 		header->unknown1 = read_32(data_s);
 		header->type = read_32(data_s); // This seems to be related to the number of parts in the file
+#ifdef DEBUG_KNOWN
+    printf("Debug Known: found length %d\n", header->length);
+    printf("Debug Known: found unknown1 %d\n", header->unknown1);
+    printf("Debug Known: found type %d\n", header->type);
+#endif
+
 	}
 
 	read_string_nullify(data_s,header->model,sizeof(header->model));
+  #ifdef DEBUG_KNOWN
+  printf("Debug Known, model: %s\n", header->model);
+  #endif
 
-	header->intsize=read_32(data_s); // Not really the size ? It was in some models.
-
-	if (header->intsize != 0xFFFFFF) { // For short files coming from official app
+	header->intsize=read_32(data_s); // Not really the size ? It was in some models, maybe…
+#ifdef DEBUG_KNOWN
+  printf("Debug Known, size: %u\n", header->intsize);
+#endif
+	if (header->intsize != 0xFFFFFF && header->intsize !=0 ) { // For short files coming from official app
 		read_string_nullify(data_s,header->serial,sizeof(header->serial));
+#ifdef DEBUG_KNOWN
+    printf("Debug Known, serial: %s\n", header->serial);
+#endif
 
 		header->triggerstatus = read_char(data_s);
 
@@ -387,9 +401,22 @@ static void time_scale_to_string(double time_scale, uint32_t *val, const char **
 int owon_output_csv(HEADER_st *header, FILE *file ) {
 	size_t sample, channel, channels_count, samples_count;
 
+#ifdef DEBUG_UNKNOWN
+	printf("Debug Unknown activated\n");
+#endif
+#ifdef DEBUG_KNOWN
+	printf("Debug Known activated\n");
+#endif
+
+ 
 	channels_count = header->channels_count;
-	if (channels_count < 1)
+	if (channels_count < 1) {
+#ifdef DEBUG_UNKNOWN || DEBUG_KNOWN
+    printf("No channels found\n");
+#endif
+
 		return 1;
+  }
 	samples_count = header->channels[0]->samples_file;
 
 

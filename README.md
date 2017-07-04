@@ -12,5 +12,14 @@ If you need any assistance or have suggestions contact bjonnh-owon at bjonnh.net
 $ cmake .
 $ make
 
-## Run for help
+## Run a dump
 $ owon-dump -h
+
+## Parse a bin file
+$ owon-parse <binfile.bin>
+
+It will output a csv file with the first line describing the data
+
+## Compile with debug mode activated (useful if you have a different model and need help)
+$ cmake -DCMAKE_BUILD_TYPE=Debug .
+$ make

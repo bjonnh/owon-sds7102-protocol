@@ -1,1 +1,10 @@
 *~
+test_files
+libowon-sds7102*
+owon-parse
+owon-dump
+CMakeFiles
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+output.csv
