@@ -33,50 +33,89 @@ int main(int argc, char **argv) {
 
   struct stat stbuf;
 
+  int fileSize = 0;
+
   char *buffer;
+  char *stdinBuf;
+
   
   if (argc<2) {
     printf("Give me the food !\n");
     return 1;
   }
 
-  fd=open(argv[1],O_RDONLY);
-  if (fd==-1) {
-    printf("Error: can't open file %s\n",argv[1]);
-    return(128);
+  if (!strcmp(argv[1], "-")) {
+    // read from stdin
+    fp = stdin;
+    fd = 0;
+
+    int fs;
+    int c;
+
+    stdinBuf = calloc(1000, sizeof(char));
+
+    while (EOF != (c = fgetc(fp))) {
+      if (fs % 1000 == 0) {
+        if ((stdinBuf = realloc(stdinBuf, (fs + 1000) * sizeof(char))) == NULL) {
+          printf("Error: realloc returned NULL");
+          return(42);
+        }
+      }
+      
+      stdinBuf[fs] = c;
+      fs++;
+    }
+
+    fileSize = fs;
+
+    buffer = calloc(fileSize,sizeof(char));
+    if (buffer==NULL) {
+      printf("Can't allocate %d bytes of memory.\n",fileSize);
+      return(126);
+    }
+
+    memcpy(buffer, stdinBuf, fileSize);
+  } else {
+    // read from file
+    fd=open(argv[1],O_RDONLY);
+    if (fd==-1) {
+      printf("Error: can't open file %s\n",argv[1]);
+      return(128);
+    }
+
+    fp=fdopen(fd,"rb");
+    if (fp==NULL) {
+      printf("Error: can't open file %s\n",argv[1]);
+      return(128);
+    }
+
+    if (fstat(fd, &stbuf) == -1) {
+      printf("Error: %s may not be a regular file\n",argv[1]);
+      return(127);
+    }
+
+    fileSize = stbuf.st_size;
+
+    buffer = calloc(fileSize,sizeof(char));
+    if (buffer==NULL) {
+      printf("Can't allocate %d bytes of memory.\n",fileSize);
+      return(126);
+    }
+    
+    if (fread((void *)buffer,sizeof(char),fileSize,fp) != fileSize) {
+      printf("Error: can't read file %s\n",argv[1]);
+      return(125);
+    }
   }
-  fp=fdopen(fd,"rb");
-  if (fp==NULL) {
-    printf("Error: can't open file %s\n",argv[1]);
-    return(128);
-  }
 
-  if (fstat(fd, &stbuf) == -1) {
-    printf("Error: %s may not be a regular file\n",argv[1]);
-    return(127);
-  }
-
-  buffer = calloc(stbuf.st_size,sizeof(char));
-  if (buffer==NULL) {
-
-    printf("Can't allocate %d bytes of memory.\n",stbuf.st_size);
-    return(126);
-  }
-  
-
-  if (fread((void *)buffer,sizeof(char),stbuf.st_size,fp) != stbuf.st_size) {
-    printf("Error: can't read file %s\n",argv[1]);
-    return(125);
-  }
-
-
-  owon_parse(buffer,stbuf.st_size,&file_header);
+  owon_parse(buffer,fileSize,&file_header);
 
   fp2=fopen("output.csv","w+");
   
   owon_output_csv(&file_header,fp2);
   fclose(fp2);
   free((char *)buffer);
+  free((char *)stdinBuf);
   owon_free_header(&file_header);
   return(0);
 }
