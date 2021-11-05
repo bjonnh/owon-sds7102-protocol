@@ -28,6 +28,7 @@
 // _attenuation_table is from the Levi Larsen app
 static float _attenuation_table[] = { 1.0e0, 1.0e1, 1.0e2, 1.0e3 }; // We are only sure for these
 static float _volt_table[] = {
+        2.0e-3, 5.0e-3, 1.0e-2,            // T.S. 05NOV2021     SDS-7102 also has 2 mV .. 10 mV / Div
 	2.0e-2, 5.0e-2, // 10 mV
 	1.0e-1, 2.0e-1, 5.0e-1, // 100 mV
 	1.0e+0, 2.0e+0, 5.0e+0, // 1 V
@@ -353,7 +354,12 @@ static float sample_id_to_time(const HEADER_st *header, uint32_t sample)
 	if (!header->channels_count)
 		return -1.0;
 
-	return header->channels[0]->timediv * 10.0 * sample / header->channels[0]->samples_count;
+	// return header->channels[0]->timediv * 10.0 * sample / header->channels[0]->samples_count;
+
+	// T.S. 05NOV2021    SDS-7102:        20 DIVs    span over      all samples in the file:
+	return header->channels[0]->timediv * 20.0 * sample / header->channels[0]->samples_file;
+
+
 }
 
 static float sample_to_volt(HEADER_st *header, uint8_t channel, uint32_t sample)
@@ -364,7 +370,11 @@ static float sample_to_volt(HEADER_st *header, uint8_t channel, uint32_t sample)
 		return -1.0;
 
 	val = header->channels[channel]->data[sample];
-	return val * 2.0 * header->channels[channel]->voltsdiv / 5.0;
+	// return val * 2.0 * header->channels[channel]->voltsdiv / 5.0;
+	
+        // T.S. 05NOV2021    SDS-7102:       10 DIVs span over 1byte=256      and subtract offset first: 
+	return (val-header->channels[channel]->offsety)*10.0/256.0  * header->channels[channel]->voltsdiv;
+
 }
 
 static void volt_scale_to_string(float volt_scale, uint32_t *val, const char **unit)
